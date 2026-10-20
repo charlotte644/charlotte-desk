@@ -8,7 +8,7 @@
 <header class="hero"><div class="wrap wide">
   <h1>My availability</h1>
   <p>Block days or times in two taps. Only the times left open appear on your booking page.</p>
-  <div class="nav"><a class="on" href="admin.html">Availability</a><a href="task.html">Add a task</a><a href="meet.html" target="_blank" rel="noopener">See the booking page</a></div>
+  <div class="nav"><a class="on" href="admin.html">Availability</a><a href="index.html?tab=task">Add a task</a><a href="index.html" target="_blank" rel="noopener">See the booking page</a></div>
 </div></header>
 
 <main class="wrap wide">
@@ -85,8 +85,8 @@
 
     <section class="card">
       <h2>My links</h2>
-      <p class="small" style="margin-top:0">Booking page (send this to people): <a id="l-meet" target="_blank" rel="noopener"></a></p>
-      <p class="small" style="margin-bottom:0">Add a task (keep this one to yourself): <a id="l-task"></a></p>
+      <p class="small" style="margin-top:0">Booking page (send this to people; it also has your Add a task tab, which only works for you): <a id="l-meet" target="_blank" rel="noopener"></a></p>
+      <p class="small" style="margin-bottom:0">Add a task tab direct link: <a id="l-task"></a></p>
     </section>
   </div>
 </main>
@@ -142,7 +142,7 @@
     // settings + links
     var s = S.settings; $('#s-title').value = s.title; $('#s-intro').value = s.intro; $('#s-notify').value = s.notify_email; $('#s-lengths').value = s.lengths; $('#s-notice').value = s.min_notice_hours;
     $('#s-horizon').value = s.horizon_days; $('#s-step').value = s.step_minutes; $('#s-buffer').value = s.buffer_minutes; $('#s-cal').value = s.calendar_ids || ''; $('#s-home').value = s.home_base || ''; $('#s-maxdrive').value = s.max_drive_minutes || 60;
-    var base = location.href.replace(/[^\/]*([?#].*)?$/, ''); $('#l-meet').textContent = base + 'meet.html'; $('#l-meet').href = base + 'meet.html'; $('#l-task').textContent = base + 'task.html'; $('#l-task').href = 'task.html';
+    var base = location.href.replace(/[^\/]*([?#].*)?$/, ''); $('#l-meet').textContent = base; $('#l-meet').href = base; $('#l-task').textContent = base + '?tab=task'; $('#l-task').href = 'index.html?tab=task';
   }
 
   $('#blocks').addEventListener('click', function (e) { var b = e.target.closest('[data-rm]'); if (!b) return; b.disabled = true; A('adminRemoveBlock', b.dataset.rm).then(function () { D.toast('Removed'); return load(); }).catch(function (x) { b.disabled = false; D.toast(x.message, 'err'); }); });

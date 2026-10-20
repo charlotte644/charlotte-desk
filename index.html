@@ -84,7 +84,6 @@
 
  <!-- ================= ADD A TASK (Charlotte only) ================= -->
  <div id="panel-task" role="tabpanel" aria-labelledby="tab-task" class="hide">
-  <div id="tlock" class="card hide"><h2>Only Charlotte can add tasks</h2><p class="muted" style="margin:0">If you are Charlotte, open your private link once on this device and this tab will unlock.</p></div>
   <div id="tapp" class="hide">
    <form id="tform" class="card" novalidate>
     <div class="field"><label for="t">What needs doing? *</label><textarea id="t" placeholder="e.g. Ring the venue about dietary needs"></textarea></div>
@@ -109,6 +108,7 @@
   var st = { type: 'Virtual (video call)', len: 0, date: '', start: null, data: null, dest: '', f2f: null, matches: [] };
 
   // ---------------- tabs ----------------
+  if (!key) { $('.tabs').classList.add('hide'); }
   function showTab(which) {
     $('#panel-meet').classList.toggle('hide', which !== 'meet'); $('#panel-task').classList.toggle('hide', which !== 'task');
     $('#tab-meet').setAttribute('aria-selected', which === 'meet'); $('#tab-task').setAttribute('aria-selected', which === 'task');
@@ -226,15 +226,14 @@
     }).catch(function (e) { $('#trecent').innerHTML = '<span class="err">' + h(e.message) + '</span>'; });
   }
   function openTasks() {
-    if (!key) { $('#tlock').classList.remove('hide'); $('#tapp').classList.add('hide'); return; }
-    $('#tlock').classList.add('hide'); $('#tapp').classList.remove('hide'); if (!tOpened) { tOpened = true; recent(); }
+    $('#tapp').classList.remove('hide'); if (!tOpened) { tOpened = true; recent(); }
   }
   $('#tform').addEventListener('submit', function (e) {
     e.preventDefault(); var btn = $('#tgo'), err = $('#terr'); err.textContent = ''; D.busy(btn, true, 'Adding…');
     A('adminAddTask', { title: $('#t').value, list: tst.list, due: dueDate(), urgency: tst.urg }).then(function () { D.busy(btn, false); $('#t').value = ''; D.toast('Added to your Morning Desk'); $('#t').focus(); recent(); })
       .catch(function (x) { D.busy(btn, false); err.textContent = x.message; });
   });
-  if (/[?&]tab=task/.test(location.search)) showTab('task');
+  if (key && /[?&]tab=task/.test(location.search)) showTab('task');
 })();
 </script>
 </body></html>

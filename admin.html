@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My availability</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head><body>
+<header class="hero"><div class="wrap wide">
+  <h1>My availability</h1>
+  <p>Block days or times in two taps. Only the times left open appear on your booking page.</p>
+  <div class="nav"><a class="on" href="admin.html">Availability</a><a href="task.html">Add a task</a><a href="meet.html" target="_blank" rel="noopener">See the booking page</a></div>
+</div></header>
+
+<main class="wrap wide">
+  <div id="loading" class="card"><span class="muted">Loading…</span></div>
+  <div id="fatal" class="card hide"><p class="err" id="fatalmsg"></p><p class="small muted">If you have lost your private link, open the Settings tab of your Charlotte's Desk Google Sheet, copy the admin_key, and open this page as <code>admin.html#key=THE_KEY</code>.</p></div>
+
+  <div id="app" class="hide">
+    <section class="card">
+      <h2>Quick block</h2>
+      <p class="small muted" style="margin-top:0">One tap. It takes the time off your booking page straight away.</p>
+      <div class="chips" id="quick"></div>
+    </section>
+
+    <section class="card">
+      <h2>Block something else</h2>
+      <div class="chips" style="margin-bottom:12px" id="btype">
+        <button type="button" class="chip on" data-t="day">Whole day(s)</button><button type="button" class="chip" data-t="time">Part of a day</button><button type="button" class="chip" data-t="weekly">Every week</button>
+      </div>
+      <div class="row2">
+        <div class="field" id="f-date"><label for="b-date">Date</label><input type="date" id="b-date"></div>
+        <div class="field" id="f-dateto"><label for="b-dateto">Until (optional, for several days)</label><input type="date" id="b-dateto"></div>
+        <div class="field hide" id="f-wd"><label for="b-wd">Day of the week</label><select id="b-wd"><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option><option value="7">Sunday</option></select></div>
+        <div class="field hide" id="f-from"><label for="b-from">From</label><input type="time" id="b-from" value="13:00"></div>
+        <div class="field hide" id="f-to"><label for="b-to">To</label><input type="time" id="b-to" value="17:00"></div>
+      </div>
+      <div class="field"><label for="b-note">Note to yourself (optional)</label><input type="text" id="b-note" placeholder="e.g. Court day, school run, holiday"></div>
+      <div class="err" id="b-err" role="alert"></div>
+      <button class="btn gold" id="b-add">Block this</button>
+    </section>
+
+    <section class="card">
+      <h2>Blocked at the moment</h2>
+      <div class="list" id="blocks"></div>
+    </section>
+
+    <section class="card">
+      <h2>Meeting requests</h2>
+      <p class="small muted" style="margin-top:0">A requested time is held, so nobody else can take it. Nothing is ever emailed to them from here: reply to them yourself.</p>
+      <div class="list" id="reqs"></div>
+    </section>
+
+    <section class="card">
+      <h2>What people can book (next two weeks)</h2>
+      <div class="prev" id="prev"></div>
+    </section>
+
+    <section class="card">
+      <h2>My weekly hours</h2>
+      <p class="small muted" style="margin-top:0">Write times like <code>09:30-12:30, 13:30-17:00</code>. Untick a day to take it off completely.</p>
+      <div id="hours"></div>
+      <button class="btn" id="h-save">Save my hours</button>
+    </section>
+
+    <section class="card">
+      <details><summary>Settings</summary>
+        <div style="margin-top:14px">
+          <div class="field"><label for="s-title">Page heading</label><input type="text" id="s-title"></div>
+          <div class="field"><label for="s-intro">Sentence under the heading</label><input type="text" id="s-intro"></div>
+          <div class="row2">
+            <div class="field"><label for="s-notify">Send meeting alerts to</label><input type="email" id="s-notify"></div>
+            <div class="field"><label for="s-lengths">Meeting lengths (minutes, comma separated)</label><input type="text" id="s-lengths"></div>
+            <div class="field"><label for="s-notice">Earliest booking: hours from now</label><input type="number" id="s-notice" min="0"></div>
+            <div class="field"><label for="s-horizon">How many days ahead</label><input type="number" id="s-horizon" min="1" max="60"></div>
+            <div class="field"><label for="s-step">Start times every (minutes)</label><input type="number" id="s-step" min="5" step="5"></div>
+            <div class="field"><label for="s-buffer">Gap around meetings (minutes)</label><input type="number" id="s-buffer" min="0" step="5"></div>
+          </div>
+          <div class="field"><label for="s-cal">Calendars to hide busy times from (email addresses, comma separated, optional)</label><input type="text" id="s-cal" placeholder="cwa@hereslaw.co.uk, lottewarren95@gmail.com"><div class="tiny muted">Only works for calendars shared with the Google account that runs this page (see SETUP.md, Part C).</div></div>
+          <button class="btn" id="s-save">Save settings</button>
+        </div>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>My links</h2>
+      <p class="small" style="margin-top:0">Booking page (send this to people): <a id="l-meet" target="_blank" rel="noopener"></a></p>
+      <p class="small" style="margin-bottom:0">Add a task (keep this one to yourself): <a id="l-task"></a></p>
+    </section>
+  </div>
+</main>
+<script src="config.js"></script><script src="app.js"></script>
+<script>
+(function () {
+  var D = window.Desk, $ = D.$, h = D.h, key = D.key(), S = null, btype = 'day';
+  function fatal(m) { $('#loading').classList.add('hide'); $('#fatal').classList.remove('hide'); $('#fatalmsg').textContent = m; }
+  function A() { return D.api.apply(null, [arguments[0], key].concat([].slice.call(arguments, 1))); }
+  function load() { return A('adminGet').then(function (s) { S = s; draw(); $('#loading').classList.add('hide'); $('#app').classList.remove('hide'); }).catch(function (e) { fatal(e.message); }); }
+  function range(a, b) { return D.fmt(a) + ' to ' + D.fmt(b); }
+  var WD = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  function draw() {
+    // quick buttons
+    var today = S.now.date, tom = D.addDays(today, 1), wd = D.weekday(today), endWeek = D.addDays(today, 7 - wd), nextMon = D.addDays(today, 8 - wd);
+    var q = [
+      ['Today, all day', { type: 'day', date: today, note: 'Quick block' }],
+      ['This afternoon', { type: 'time', date: today, from: '12:00', to: '18:00', note: 'Quick block' }],
+      ['Tomorrow, all day', { type: 'day', date: tom, note: 'Quick block' }],
+      ['Tomorrow morning', { type: 'time', date: tom, from: '06:00', to: '13:00', note: 'Quick block' }],
+      ['Rest of this week', { type: 'day', date: today, date_to: endWeek, note: 'Quick block' }],
+      ['All of next week', { type: 'day', date: nextMon, date_to: D.addDays(nextMon, 6), note: 'Quick block' }],
+      ['Every Friday afternoon', { type: 'weekly', weekday: 5, from: '12:00', to: '18:00', note: 'Quick block' }]
+    ];
+    $('#quick').innerHTML = q.map(function (x, i) { return '<button type="button" class="chip gold" data-i="' + i + '">' + h(x[0]) + '</button>'; }).join('');
+    $('#quick').onclick = function (e) { var b = e.target.closest('.chip'); if (!b) return; var item = q[Number(b.dataset.i)]; b.disabled = true;
+      A('adminAddBlock', item[1]).then(function () { D.toast('Blocked: ' + item[0]); return load(); }).catch(function (x) { b.disabled = false; D.toast(x.message, 'err'); }); };
+
+    // blocks
+    $('#blocks').innerHTML = S.blocks.length ? S.blocks.map(function (b) {
+      var what = b.type === 'weekly' ? 'Every ' + WD[Number(b.weekday)] + ', ' + b.from + ' to ' + b.to
+        : b.type === 'time' ? D.label(b.date) + ', ' + b.from + ' to ' + b.to : (b.date_to && b.date_to !== b.date ? D.label(b.date) + ' to ' + D.label(b.date_to) : D.label(b.date)) + ', all day';
+      return '<div><div><strong>' + h(what) + '</strong>' + (b.note && b.note !== 'Quick block' ? '<div class="small muted">' + h(b.note) + '</div>' : '') + '</div><button class="btn small ghost" data-rm="' + h(b.id) + '">Remove</button></div>';
+    }).join('') : '<p class="muted small" style="margin:0">Nothing blocked. Your normal weekly hours apply.</p>';
+
+    // requests
+    var rq = S.requests;
+    $('#reqs').innerHTML = rq.length ? rq.map(function (r) {
+      var pill = { Requested: 'amber', Confirmed: 'green', Declined: 'grey', Done: 'grey' }[r.status] || '';
+      return '<div style="align-items:flex-start"><div><strong>' + h(r.name) + '</strong> <span class="pill ' + pill + '">' + h(r.status) + '</span><div class="small">' + h(r.label) + ' at ' + h(r.start) + ' for ' + h(r.length) + ' min, ' + h(r.type) + (r.location ? ': ' + h(r.location) : '') + '</div>' +
+        '<div class="small muted">' + h(r.topic) + '</div><div class="small"><a href="mailto:' + h(r.email) + '">' + h(r.email) + '</a>' + (r.phone ? ' · ' + h(r.phone) : '') + '</div></div>' +
+        '<div class="chips" style="justify-content:flex-end">' + (r.status === 'Requested' ? '<button class="btn small" data-st="Confirmed" data-ref="' + h(r.ref) + '">Confirmed</button><button class="btn small ghost" data-st="Declined" data-ref="' + h(r.ref) + '">Decline</button>' :
+          r.status === 'Confirmed' ? '<button class="btn small ghost" data-st="Done" data-ref="' + h(r.ref) + '">Done</button><button class="btn small ghost" data-st="Declined" data-ref="' + h(r.ref) + '">Cancel</button>' : '') + '</div></div>';
+    }).join('') : '<p class="muted small" style="margin:0">No requests yet.</p>';
+
+    // preview
+    $('#prev').innerHTML = S.preview.map(function (d) { return '<div><b>' + h(d.label) + '</b>' + (d.free.length ? d.free.map(function (f) { return range(f[0], f[1]); }).join('<br>') : '<span class="muted">Nothing open</span>') + '</div>'; }).join('');
+
+    // hours
+    $('#hours').innerHTML = S.hours.map(function (x) { return '<div class="hours"><label><strong>' + h(x.name) + '</strong></label><input type="checkbox" data-wd="' + x.weekday + '" ' + (x.on ? 'checked' : '') + ' aria-label="' + h(x.name) + ' open"><input type="text" data-w="' + x.weekday + '" value="' + h(x.windows) + '" placeholder="09:30-12:30, 13:30-17:00"></div>'; }).join('');
+
+    // settings + links
+    var s = S.settings; $('#s-title').value = s.title; $('#s-intro').value = s.intro; $('#s-notify').value = s.notify_email; $('#s-lengths').value = s.lengths; $('#s-notice').value = s.min_notice_hours;
+    $('#s-horizon').value = s.horizon_days; $('#s-step').value = s.step_minutes; $('#s-buffer').value = s.buffer_minutes; $('#s-cal').value = s.calendar_ids || '';
+    var base = location.href.replace(/[^\/]*([?#].*)?$/, ''); $('#l-meet').textContent = base + 'meet.html'; $('#l-meet').href = base + 'meet.html'; $('#l-task').textContent = base + 'task.html'; $('#l-task').href = 'task.html';
+  }
+
+  $('#blocks').addEventListener('click', function (e) { var b = e.target.closest('[data-rm]'); if (!b) return; b.disabled = true; A('adminRemoveBlock', b.dataset.rm).then(function () { D.toast('Removed'); return load(); }).catch(function (x) { b.disabled = false; D.toast(x.message, 'err'); }); });
+  $('#reqs').addEventListener('click', function (e) { var b = e.target.closest('[data-st]'); if (!b) return; b.disabled = true; A('adminSetRequestStatus', b.dataset.ref, b.dataset.st).then(function () { D.toast('Updated'); return load(); }).catch(function (x) { b.disabled = false; D.toast(x.message, 'err'); }); });
+
+  $('#btype').addEventListener('click', function (e) {
+    var b = e.target.closest('.chip'); if (!b) return; btype = b.dataset.t; D.$$('#btype .chip').forEach(function (x) { x.classList.toggle('on', x === b); });
+    $('#f-date').classList.toggle('hide', btype === 'weekly'); $('#f-dateto').classList.toggle('hide', btype !== 'day'); $('#f-wd').classList.toggle('hide', btype !== 'weekly');
+    $('#f-from').classList.toggle('hide', btype === 'day'); $('#f-to').classList.toggle('hide', btype === 'day');
+  });
+  $('#b-add').addEventListener('click', function () {
+    var btn = this, err = $('#b-err'); err.textContent = ''; D.busy(btn, true, 'Blocking…');
+    A('adminAddBlock', { type: btype, date: $('#b-date').value, date_to: btype === 'day' ? $('#b-dateto').value : '', weekday: $('#b-wd').value, from: $('#b-from').value, to: $('#b-to').value, note: $('#b-note').value })
+      .then(function () { D.busy(btn, false); $('#b-note').value = ''; D.toast('Blocked'); return load(); }).catch(function (x) { D.busy(btn, false); err.textContent = x.message; });
+  });
+  $('#h-save').addEventListener('click', function () {
+    var btn = this, rows = [1, 2, 3, 4, 5, 6, 7].map(function (w) { return { weekday: w, on: $('[data-wd="' + w + '"]').checked, windows: $('[data-w="' + w + '"]').value }; });
+    D.busy(btn, true, 'Saving…'); A('adminSaveHours', rows).then(function () { D.busy(btn, false); D.toast('Hours saved'); return load(); }).catch(function (x) { D.busy(btn, false); D.toast(x.message, 'err'); });
+  });
+  $('#s-save').addEventListener('click', function () {
+    var btn = this; D.busy(btn, true, 'Saving…');
+    A('adminSaveSettings', { title: $('#s-title').value, intro: $('#s-intro').value, notify_email: $('#s-notify').value, lengths: $('#s-lengths').value, min_notice_hours: $('#s-notice').value, horizon_days: $('#s-horizon').value, step_minutes: $('#s-step').value, buffer_minutes: $('#s-buffer').value, calendar_ids: $('#s-cal').value })
+      .then(function () { D.busy(btn, false); D.toast('Settings saved'); return load(); }).catch(function (x) { D.busy(btn, false); D.toast(x.message, 'err'); });
+  });
+  if (!key) fatal('This page needs your private link.'); else load();
+})();
+</script>
+</body></html>

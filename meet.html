@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Book time with Charlotte</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head><body>
+<header class="hero"><div class="wrap">
+  <h1 id="ttl">Book time with Charlotte</h1>
+  <p id="intro">Choose a time that suits you. Nothing is booked until Charlotte confirms it by email.</p>
+  <p id="next" class="small" style="margin-top:10px;color:var(--gold)"></p>
+</div></header>
+
+<main class="wrap">
+  <div id="loading" class="card"><span class="muted">Loading Charlotte's availability…</span></div>
+  <div id="fatal" class="card hide"><p class="err" id="fatalmsg"></p></div>
+
+  <form id="form" class="hide" autocomplete="on" novalidate>
+    <section class="card">
+      <div class="step"><b>1</b><h3>How would you like to meet?</h3></div>
+      <div class="cards2">
+        <button type="button" class="pick on" data-t="Virtual (video call)"><strong>Video call</strong><span class="small muted">Charlotte sends you a link</span></button>
+        <button type="button" class="pick" data-t="Face to face"><strong>Face to face</strong><span class="small muted">You tell her where</span></button>
+      </div>
+      <div class="field hide" id="locf" style="margin-top:12px"><label for="loc">Where would you like to meet? *</label><input type="text" id="loc" placeholder="Café, office or address and town"></div>
+    </section>
+
+    <section class="card">
+      <div class="step"><b>2</b><h3>How long?</h3></div>
+      <div class="chips" id="lens"></div>
+    </section>
+
+    <section class="card">
+      <div class="step"><b>3</b><h3>Pick a day and a time</h3></div>
+      <p class="small muted" style="margin-top:0">Only times when Charlotte is free are shown (UK time).</p>
+      <div class="chips" id="days" style="margin-bottom:10px"></div>
+      <div class="chips" id="times"></div>
+      <p class="small muted" id="nodays"></p>
+      <p id="picked" class="small" style="margin-bottom:0"></p>
+    </section>
+
+    <section class="card">
+      <div class="step"><b>4</b><h3>Your details</h3></div>
+      <div class="row2"><div class="field"><label for="name">Your name *</label><input type="text" id="name" autocomplete="name"></div>
+        <div class="field"><label for="email">Email *</label><input type="email" id="email" autocomplete="email"></div></div>
+      <div class="field"><label for="phone">Phone (optional)</label><input type="tel" id="phone" autocomplete="tel"></div>
+      <div class="field"><label for="topic">What would you like to talk about? *</label><textarea id="topic"></textarea></div>
+      <div class="field hp" aria-hidden="true"><label for="website">Leave this empty</label><input type="text" id="website" tabindex="-1" autocomplete="off"></div>
+      <div class="err" id="err" role="alert"></div>
+      <button type="submit" class="btn gold block" id="go">Ask Charlotte for this time</button>
+      <p class="tiny muted" style="margin-top:10px">This sends Charlotte a request. You will get a reply from her by email to confirm, or to suggest another time. Your details are only used to arrange the meeting.</p>
+    </section>
+  </form>
+
+  <div id="done" class="card hide">
+    <div class="ok"><h2 style="margin-top:0">Request sent</h2><p id="donemsg" style="margin:0"></p></div>
+    <p class="small muted" style="margin-top:14px">Nothing is booked yet. Charlotte will reply by email to confirm.</p>
+  </div>
+</main>
+<script src="config.js"></script><script src="app.js"></script>
+<script>
+(function () {
+  var D = window.Desk, $ = D.$, h = D.h, st = { type: 'Virtual (video call)', len: 0, date: '', start: null, data: null };
+
+  function fatal(m) { $('#loading').classList.add('hide'); $('#fatal').classList.remove('hide'); $('#fatalmsg').textContent = m; }
+
+  D.api('getAvailability').then(function (a) {
+    st.data = a; $('#ttl').textContent = a.title; document.title = a.title; $('#intro').textContent = a.intro;
+    st.len = (a.lengths.indexOf(30) !== -1 ? 30 : a.lengths[0]);
+    $('#loading').classList.add('hide'); $('#form').classList.remove('hide');
+    drawLens(); drawDays();
+    var first = null; a.days.some(function (d) { var t = D.fit(d.free, st.len, a.step); if (t.length) { first = d.label + ' at ' + D.fmt(t[0]); return true; } });
+    if (first) $('#next').textContent = 'Next free time: ' + first;
+  }).catch(function (e) { fatal(e.message); });
+
+  $('.cards2').addEventListener('click', function (e) {
+    var b = e.target.closest('.pick'); if (!b) return; st.type = b.dataset.t;
+    D.$$('.pick').forEach(function (x) { x.classList.toggle('on', x === b); });
+    $('#locf').classList.toggle('hide', st.type !== 'Face to face');
+  });
+  function drawLens() {
+    $('#lens').innerHTML = st.data.lengths.map(function (n) { return '<button type="button" class="chip' + (n === st.len ? ' on' : '') + '" data-n="' + n + '">' + n + ' minutes</button>'; }).join('');
+  }
+  $('#lens').addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (!b) return; st.len = Number(b.dataset.n); st.start = null; drawLens(); drawDays(); });
+  function drawDays() {
+    var ok = st.data.days.filter(function (d) { return D.fit(d.free, st.len, st.data.step).length; });
+    if (!ok.some(function (d) { return d.date === st.date; })) { st.date = ok.length ? ok[0].date : ''; st.start = null; }
+    $('#days').innerHTML = ok.map(function (d) { return '<button type="button" class="chip' + (d.date === st.date ? ' on' : '') + '" data-d="' + d.date + '">' + h(d.label) + '</button>'; }).join('');
+    $('#nodays').textContent = ok.length ? '' : 'There are no free times for that length in the next few weeks. Try a shorter meeting, or email Charlotte directly.';
+    drawTimes();
+  }
+  $('#days').addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (!b) return; st.date = b.dataset.d; st.start = null; drawDays(); });
+  function drawTimes() {
+    var day = st.data.days.filter(function (d) { return d.date === st.date; })[0], t = day ? D.fit(day.free, st.len, st.data.step) : [];
+    $('#times').innerHTML = t.map(function (m) { return '<button type="button" class="chip' + (m === st.start ? ' on' : '') + '" data-m="' + m + '">' + D.fmt(m) + '</button>'; }).join('');
+    $('#picked').innerHTML = st.start !== null ? 'You have picked <strong>' + h(day.label) + ' at ' + D.fmt(st.start) + '</strong> for ' + st.len + ' minutes.' : '';
+  }
+  $('#times').addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (!b) return; st.start = Number(b.dataset.m); drawTimes(); });
+
+  $('#form').addEventListener('submit', function (e) {
+    e.preventDefault(); var err = $('#err'); err.textContent = '';
+    if (!st.date || st.start === null) { err.textContent = 'Please pick a day and a time.'; return; }
+    var btn = $('#go'); D.busy(btn, true, 'Sending…');
+    D.api('requestMeeting', { name: $('#name').value, email: $('#email').value, phone: $('#phone').value, topic: $('#topic').value, type: st.type, location: $('#loc').value,
+      date: st.date, start: D.fmt(st.start), length: st.len, website: $('#website').value }).then(function () {
+      $('#form').classList.add('hide'); $('#done').classList.remove('hide');
+      $('#donemsg').textContent = 'Thank you. You asked for ' + D.label(st.date) + ' at ' + D.fmt(st.start) + ' (' + st.len + ' minutes, ' + (st.type === 'Face to face' ? 'face to face' : 'video call') + ').';
+      window.scrollTo(0, 0);
+    }).catch(function (x) { D.busy(btn, false); err.textContent = x.message; D.api('getAvailability').then(function (a) { st.data = a; st.start = null; drawDays(); }).catch(function () {}); });
+  });
+})();
+</script>
+</body></html>

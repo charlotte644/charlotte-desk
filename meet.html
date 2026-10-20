@@ -23,6 +23,7 @@
         <button type="button" class="pick" data-t="Face to face"><strong>Face to face</strong><span class="small muted">You tell her where</span></button>
       </div>
       <div class="field hide" id="locf" style="margin-top:12px"><label for="loc">Where would you like to meet? *</label><input type="text" id="loc" placeholder="Café, office or address and town"></div>
+      <div class="notice hide" id="locmsg" role="status" style="margin-top:12px"></div>
     </section>
 
     <section class="card">
@@ -73,10 +74,18 @@
     if (first) $('#next').textContent = 'Next free time: ' + first;
   }).catch(function (e) { fatal(e.message); });
 
+  function toVideo(msg) {
+    st.type = 'Virtual (video call)'; D.$$('.pick').forEach(function (x) { x.classList.toggle('on', x.dataset.t === st.type); });
+    $('#locf').classList.add('hide'); $('#loc').value = ''; $('#locmsg').textContent = msg; $('#locmsg').classList.remove('hide');
+  }
+  $('#loc').addEventListener('change', function () {
+    var v = this.value.trim(); if (!v) return; $('#locmsg').classList.add('hide');
+    D.api('checkLocation', v).then(function (r) { if (r.tooFar) toVideo(r.message); }).catch(function () { /* the request itself is checked again on sending */ });
+  });
   $('.cards2').addEventListener('click', function (e) {
     var b = e.target.closest('.pick'); if (!b) return; st.type = b.dataset.t;
     D.$$('.pick').forEach(function (x) { x.classList.toggle('on', x === b); });
-    $('#locf').classList.toggle('hide', st.type !== 'Face to face');
+    $('#locf').classList.toggle('hide', st.type !== 'Face to face'); $('#locmsg').classList.add('hide');
   });
   function drawLens() {
     $('#lens').innerHTML = st.data.lengths.map(function (n) { return '<button type="button" class="chip' + (n === st.len ? ' on' : '') + '" data-n="' + n + '">' + n + ' minutes</button>'; }).join('');
@@ -100,13 +109,14 @@
   $('#form').addEventListener('submit', function (e) {
     e.preventDefault(); var err = $('#err'); err.textContent = '';
     if (!st.date || st.start === null) { err.textContent = 'Please pick a day and a time.'; return; }
+    if (st.type === 'Face to face' && !$('#loc').value.trim()) { err.textContent = 'Please say where you would like to meet, or choose a video call.'; $('#loc').focus(); return; }
     var btn = $('#go'); D.busy(btn, true, 'Sending…');
     D.api('requestMeeting', { name: $('#name').value, email: $('#email').value, phone: $('#phone').value, topic: $('#topic').value, type: st.type, location: $('#loc').value,
       date: st.date, start: D.fmt(st.start), length: st.len, website: $('#website').value }).then(function () {
       $('#form').classList.add('hide'); $('#done').classList.remove('hide');
       $('#donemsg').textContent = 'Thank you. You asked for ' + D.label(st.date) + ' at ' + D.fmt(st.start) + ' (' + st.len + ' minutes, ' + (st.type === 'Face to face' ? 'face to face' : 'video call') + ').';
       window.scrollTo(0, 0);
-    }).catch(function (x) { D.busy(btn, false); err.textContent = x.message; D.api('getAvailability').then(function (a) { st.data = a; st.start = null; drawDays(); }).catch(function () {}); });
+    }).catch(function (x) { D.busy(btn, false); if (/^TOO_FAR:/.test(x.message)) { toVideo(x.message.replace(/^TOO_FAR:/, '')); err.textContent = 'Please check the details and press the button again to send it as a video call.'; return; } err.textContent = x.message; D.api('getAvailability').then(function (a) { st.data = a; st.start = null; drawDays(); }).catch(function () {}); });
   });
 })();
 </script>

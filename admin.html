@@ -75,6 +75,8 @@
             <div class="field"><label for="s-step">Start times every (minutes)</label><input type="number" id="s-step" min="5" step="5"></div>
             <div class="field"><label for="s-buffer">Gap around meetings (minutes)</label><input type="number" id="s-buffer" min="0" step="5"></div>
           </div>
+          <div class="row2"><div class="field"><label for="s-home">Home base for drive times (never shown to visitors)</label><input type="text" id="s-home"></div>
+            <div class="field"><label for="s-maxdrive">Longest drive for a face-to-face meeting (minutes)</label><input type="number" id="s-maxdrive" min="10" step="5"></div></div>
           <div class="field"><label for="s-cal">Calendars to hide busy times from (email addresses, comma separated, optional)</label><input type="text" id="s-cal" placeholder="cwa@hereslaw.co.uk, lottewarren95@gmail.com"><div class="tiny muted">Only works for calendars shared with the Google account that runs this page (see SETUP.md, Part C).</div></div>
           <button class="btn" id="s-save">Save settings</button>
         </div>
@@ -139,7 +141,7 @@
 
     // settings + links
     var s = S.settings; $('#s-title').value = s.title; $('#s-intro').value = s.intro; $('#s-notify').value = s.notify_email; $('#s-lengths').value = s.lengths; $('#s-notice').value = s.min_notice_hours;
-    $('#s-horizon').value = s.horizon_days; $('#s-step').value = s.step_minutes; $('#s-buffer').value = s.buffer_minutes; $('#s-cal').value = s.calendar_ids || '';
+    $('#s-horizon').value = s.horizon_days; $('#s-step').value = s.step_minutes; $('#s-buffer').value = s.buffer_minutes; $('#s-cal').value = s.calendar_ids || ''; $('#s-home').value = s.home_base || ''; $('#s-maxdrive').value = s.max_drive_minutes || 60;
     var base = location.href.replace(/[^\/]*([?#].*)?$/, ''); $('#l-meet').textContent = base + 'meet.html'; $('#l-meet').href = base + 'meet.html'; $('#l-task').textContent = base + 'task.html'; $('#l-task').href = 'task.html';
   }
 
@@ -162,7 +164,7 @@
   });
   $('#s-save').addEventListener('click', function () {
     var btn = this; D.busy(btn, true, 'Saving…');
-    A('adminSaveSettings', { title: $('#s-title').value, intro: $('#s-intro').value, notify_email: $('#s-notify').value, lengths: $('#s-lengths').value, min_notice_hours: $('#s-notice').value, horizon_days: $('#s-horizon').value, step_minutes: $('#s-step').value, buffer_minutes: $('#s-buffer').value, calendar_ids: $('#s-cal').value })
+    A('adminSaveSettings', { title: $('#s-title').value, intro: $('#s-intro').value, notify_email: $('#s-notify').value, lengths: $('#s-lengths').value, min_notice_hours: $('#s-notice').value, horizon_days: $('#s-horizon').value, step_minutes: $('#s-step').value, buffer_minutes: $('#s-buffer').value, calendar_ids: $('#s-cal').value, home_base: $('#s-home').value, max_drive_minutes: $('#s-maxdrive').value })
       .then(function () { D.busy(btn, false); D.toast('Settings saved'); return load(); }).catch(function (x) { D.busy(btn, false); D.toast(x.message, 'err'); });
   });
   if (!key) fatal('This page needs your private link.'); else load();

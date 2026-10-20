@@ -104,11 +104,12 @@
 <script src="config.js"></script><script src="app.js"></script>
 <script>
 (function () {
-  var D = window.Desk, $ = D.$, h = D.h, key = D.key();
+  var D = window.Desk, $ = D.$, h = D.h, key = D.key(), tkey = key ? '' : D.taskKey(), limited = !key && !!tkey;
   var st = { type: 'Virtual (video call)', len: 0, date: '', start: null, data: null, dest: '', f2f: null, matches: [] };
 
   // ---------------- tabs ----------------
   if (!key) { $('.tabs').classList.add('hide'); }
+  if (limited) { $('#panel-meet').classList.add('hide'); $('#panel-task').classList.remove('hide'); $('#ttl').textContent = 'Add a task for Charlotte'; $('#intro').textContent = 'It goes straight onto her Morning Desk.'; $('#next').textContent = ''; document.title = 'Add a task for Charlotte'; $('#tapp').classList.remove('hide'); $('#trecent').closest('section').classList.add('hide'); }
   function showTab(which) {
     $('#panel-meet').classList.toggle('hide', which !== 'meet'); $('#panel-task').classList.toggle('hide', which !== 'task');
     $('#tab-meet').setAttribute('aria-selected', which === 'meet'); $('#tab-task').setAttribute('aria-selected', which === 'task');
@@ -131,7 +132,7 @@
       $('#next').textContent = first ? 'Next free time: ' + first : '';
     });
   }
-  load('').catch(function (e) { fatal(e.message); });
+  if (!limited) load('').catch(function (e) { fatal(e.message); });
 
   function toVideo(msg) {
     st.type = 'Virtual (video call)'; st.dest = ''; st.f2f = null; D.$$('.pick').forEach(function (x) { x.classList.toggle('on', x.dataset.t === st.type); });
@@ -209,7 +210,7 @@
 
   // ---------------- add a task (needs Charlotte's private key) ----------------
   var tst = { list: 'Work (Hammer and Pen)', urg: 'Normal', when: 'today' }, tOpened = false;
-  function A() { return D.api.apply(null, [arguments[0], key].concat([].slice.call(arguments, 1))); }
+  function A() { return D.api.apply(null, [arguments[0], key || tkey].concat([].slice.call(arguments, 1))); }
   function pick(sel, set) { $(sel).addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (!b) return; D.$$(sel + ' .chip').forEach(function (x) { x.classList.toggle('on', x === b); }); set(b); }); }
   pick('#tlist', function (b) { tst.list = b.dataset.v; }); pick('#turg', function (b) { tst.urg = b.dataset.v; });
   pick('#twhen', function (b) { tst.when = b.dataset.d; $('#tdue').value = ''; });

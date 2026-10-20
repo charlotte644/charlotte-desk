@@ -22,6 +22,12 @@
     if (m) { D.store.set('desk_key', m[1]); try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ } }
     return D.store.get('desk_key') || '';
   };
+  // the add-tasks-only link carries #tk=...; it is remembered on that device and then hidden from the address bar
+  D.taskKey = function () {
+    var m = /[#&]tk=([A-Za-z0-9]+)/.exec(location.hash || '');
+    if (m) { D.store.set('desk_tkey', m[1]); try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ } }
+    return D.store.get('desk_tkey') || '';
+  };
   D.toast = function (msg, kind) {
     var t = document.createElement('div'); t.className = 'toast' + (kind === 'err' ? ' err' : ''); t.textContent = msg; t.setAttribute('role', 'status'); document.body.appendChild(t);
     setTimeout(function () { t.remove(); }, kind === 'err' ? 5000 : 2600);

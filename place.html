@@ -32,7 +32,7 @@
 
   <div id="done" class="card hide">
     <div class="ok"><h2 style="margin-top:0">Thank you</h2><p id="donemsg" style="margin:0"></p></div>
-    <p class="small muted" style="margin-top:14px">Nothing is confirmed yet. Charlotte will confirm the meeting and the place by email, and send you a calendar invite.</p>
+    <p class="small muted" style="margin-top:14px" id="donefoot"></p>
   </div>
 </main>
 <script src="config.js?v=3"></script><script src="app.js?v=3"></script>
@@ -48,7 +48,7 @@
     $('#loading').classList.add('hide'); $('#main').classList.remove('hide');
     $('#hello').innerHTML = 'Hi ' + h(i.first) + ', this is for your 1-2-1 with Charlotte on <strong>' + h(i.when) + '</strong> (' + i.length + ' minutes, face to face).' +
       (i.chosen ? '<br><span class="small muted">You have already chosen <strong>' + h(i.chosen) + '</strong>. You can search again to change it.</span>' : '');
-    if (i.confirmed) { $('#hello').innerHTML += '<br><span class="small muted">This meeting is already confirmed. If you need to change the place, please reply to Charlotte\'s email.</span>'; $('#go').disabled = true; }
+    if (i.confirmed) { $('#hello').innerHTML += '<br><span class="small muted">Your meeting is confirmed. Choose a place below and it will be added to your calendar invite.</span>'; }
   }).catch(function (e) { fatal(e.message); });
 
   function search() {
@@ -76,6 +76,7 @@
     D.api('choosePlace', ref, tok, i).then(function (r) {
       $('#main').classList.add('hide'); $('#done').classList.remove('hide');
       $('#donemsg').innerHTML = 'You chose <strong>' + h(r.place) + '</strong>, ' + h(r.address) + ', for <strong>' + h(r.when) + '</strong>.';
+      $('#donefoot').textContent = r.confirmed ? 'Your meeting is already confirmed. The calendar invite has been updated with the place.' : 'Nothing is confirmed yet. Charlotte will confirm the meeting and the place by email, and send you a calendar invite.';
       window.scrollTo(0, 0);
     }).catch(function (x) { D.busy(b, false); $('#err').textContent = x.message; });
   });

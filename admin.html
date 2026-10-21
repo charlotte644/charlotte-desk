@@ -150,7 +150,7 @@
     var p = e.target.closest('[data-pl]');
     if (p) { p.disabled = true; A('adminPlaceLink', p.dataset.pl).then(function (r) { p.disabled = false; var done = function () { D.toast('Place link copied'); }; try { navigator.clipboard.writeText(r.url).then(done, function () { window.prompt('Copy this link', r.url); }); } catch (x) { window.prompt('Copy this link', r.url); } }).catch(function (x) { p.disabled = false; D.toast(x.message, 'err'); }); return; }
     var b = e.target.closest('[data-st]'); if (!b) return; b.disabled = true;
-    A('adminSetRequestStatus', b.dataset.ref, b.dataset.st).then(function (r) { D.toast(r && r.eventProblem ? 'Confirmed, but the calendar invite failed: ' + r.eventProblem : (b.dataset.st === 'Confirmed' ? 'Confirmed. The calendar invite and GAINS email have been sent.' : 'Updated')); return load(); }).catch(function (x) { b.disabled = false; D.toast(x.message, 'err'); });
+    A('adminSetRequestStatus', b.dataset.ref, b.dataset.st).then(function (r) { D.toast(r && (r.eventProblem || r.mailProblem) ? 'Confirmed, but: ' + (r.eventProblem ? 'the calendar invite failed (' + r.eventProblem + ') ' : '') + (r.mailProblem ? 'the confirmation email failed (' + r.mailProblem + ')' : '') : (b.dataset.st === 'Confirmed' ? 'Confirmed. The confirmation email (with GAINS) and calendar invite have been sent.' : 'Updated'), r && (r.eventProblem || r.mailProblem) ? 'err' : undefined); return load(); }).catch(function (x) { b.disabled = false; D.toast(x.message, 'err'); });
   });
 
   $('#btype').addEventListener('click', function (e) {

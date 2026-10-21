@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Book a BNI 1-2-1 with Charlotte</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+<style>
+  .match { display: block; width: 100%; text-align: left; font: inherit; border: 2px solid var(--line); background: #fff; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; color: var(--ink); }
+  .match.on { border-color: var(--navy); background: #f1f3fa; box-shadow: 0 0 0 3px rgba(199,160,74,.35); }
+  .match[disabled] { opacity: .55; cursor: not-allowed; }
+  .match .small a { margin-left: 6px; }
+  .mapframe { width: 100%; height: 220px; border: 1px solid var(--line); border-radius: 10px; margin-top: 4px; }
+</style>
+</head><body>
+<header class="hero"><div class="wrap">
+  <h1 id="ttl">Book a 1-2-1 with Charlotte</h1>
+  <p id="intro">For BNI members. Pick a time that suits you: video calls are confirmed straight away, and face to face needs Charlotte's approval.</p>
+  <p id="next" class="small" style="margin-top:10px;color:var(--gold)"></p>
+</div></header>
+
+<main class="wrap">
+  <div id="loading" class="card"><span class="muted">Loading Charlotte's availability…</span></div>
+  <div id="fatal" class="card hide"><p class="err" id="fatalmsg"></p></div>
+
+  <form id="form" class="hide" autocomplete="on" novalidate>
+    <section class="card">
+      <div class="step"><b>1</b><h3>How would you like to meet?</h3></div>
+      <div class="cards2">
+        <button type="button" class="pick on" data-t="Virtual (video call)"><strong>Video call</strong><span class="small muted">Confirmed instantly, with a calendar invite and video link</span></button>
+        <button type="button" class="pick" data-t="Face to face"><strong>Face to face</strong><span class="small muted">You choose where. Charlotte approves these</span></button>
+      </div>
+      <div class="hide" id="locf" style="margin-top:12px">
+        <div class="field" style="margin-bottom:8px"><label for="loc">Where would you like to meet? *</label>
+          <div style="display:flex;gap:8px"><input type="text" id="loc" placeholder="Venue name and town, or a postcode" autocomplete="off"><button type="button" class="btn" id="findbtn" style="white-space:nowrap">Find address</button></div></div>
+        <div id="matches"></div>
+        <iframe id="mapframe" class="mapframe hide" title="Map of the place you chose" loading="lazy" referrerpolicy="no-referrer"></iframe>
+        <p class="tiny muted" style="margin:6px 0 0">Charlotte can meet face to face within about an hour's drive of her base. Anywhere further, a video call works best.</p>
+      </div>
+      <div class="notice hide" id="locmsg" role="status" style="margin-top:12px"></div>
+    </section>
+
+    <section class="card">
+      <div class="step"><b>2</b><h3>How long?</h3></div>
+      <div class="chips" id="lens"></div>
+    </section>
+
+    <section class="card">
+      <div class="step"><b>3</b><h3>Pick a day and a time</h3></div>
+      <p class="small muted" style="margin-top:0">Only times when Charlotte is free are shown (UK time).</p>
+      <div class="chips" id="days" style="margin-bottom:10px"></div>
+      <div class="chips" id="times"></div>
+      <p class="small muted" id="nodays"></p>
+      <p id="picked" class="small" style="margin-bottom:0"></p>
+    </section>
+
+    <section class="card">
+      <div class="step"><b>4</b><h3>Your details</h3></div>
+      <div class="row2"><div class="field"><label for="name">Your name *</label><input type="text" id="name" autocomplete="name"></div>
+        <div class="field"><label for="email">Email *</label><input type="email" id="email" autocomplete="email"></div></div>
+      <div class="row2"><div class="field"><label for="chapter">Your BNI chapter *</label><input type="text" id="chapter" placeholder="e.g. BNI Horizon - Southport"></div>
+        <div class="field"><label for="company">Your business (optional)</label><input type="text" id="company" autocomplete="organization"></div></div>
+      <div class="field"><label for="phone">Phone (optional)</label><input type="tel" id="phone" autocomplete="tel"></div>
+      <div class="field"><label for="notes">Anything you would like to cover? (optional)</label><textarea id="notes"></textarea></div>
+      <div class="field hp" aria-hidden="true"><label for="website">Leave this empty</label><input type="text" id="website" tabindex="-1" autocomplete="off"></div>
+      <div class="err" id="err" role="alert"></div>
+      <button type="submit" class="btn gold block" id="go">Book my 1-2-1</button>
+      <p class="tiny muted" id="fine" style="margin-top:10px"></p>
+    </section>
+  </form>
+
+  <div id="done" class="card hide">
+    <div class="ok"><h2 style="margin-top:0" id="donehead">Booked</h2><p id="donemsg" style="margin:0"></p></div>
+    <p class="small muted" style="margin-top:14px" id="donefoot"></p>
+  </div>
+</main>
+<script src="config.js?v=3"></script><script src="app.js?v=3"></script>
+<script>
+(function () {
+  var D = window.Desk, $ = D.$, h = D.h;
+  var st = { type: 'Virtual (video call)', len: 0, date: '', start: null, data: null, dest: '', f2f: null, matches: [] };
+
+  function fatal(m) { $('#loading').classList.add('hide'); $('#fatal').classList.remove('hide'); $('#fatalmsg').textContent = m; }
+  function blocked(date, m) { if (st.type !== 'Face to face' || !st.dest || !st.f2f) return false; return (st.f2f[date] || []).some(function (b) { return m >= b[0] && m < b[1]; }); }
+  function timesFor(d) { return D.fit(d.free, st.len, st.data.step).filter(function (m) { return !blocked(d.date, m); }); }
+  function words() {
+    var v = st.type !== 'Face to face';
+    $('#go').textContent = v ? 'Book my 1-2-1' : 'Ask Charlotte for this 1-2-1';
+    $('#fine').textContent = v ? 'A video call is confirmed straight away. You will get a calendar invite by email with the video link.' : 'Face to face is a request. Nothing is confirmed until Charlotte approves it and replies to you.';
+  }
+  function load(dest) {
+    return D.api('getBniAvailability', dest || '').then(function (a) {
+      st.data = a;
+      if (!st.len) st.len = (a.lengths.indexOf(60) !== -1 ? 60 : a.lengths[0]);
+      $('#loading').classList.add('hide'); $('#form').classList.remove('hide'); words(); drawLens(); drawDays();
+      var first = null; a.days.some(function (d) { var t = timesFor(d); if (t.length) { first = d.label + ' at ' + D.fmt(t[0]); return true; } });
+      $('#next').textContent = first ? 'Next free time: ' + first : '';
+    });
+  }
+  load('').catch(function (e) { fatal(e.message); });
+
+  function toVideo(msg) {
+    st.type = 'Virtual (video call)'; st.dest = ''; st.f2f = null; D.$$('.pick').forEach(function (x) { x.classList.toggle('on', x.dataset.t === st.type); });
+    $('#locf').classList.add('hide'); $('#loc').value = ''; $('#matches').innerHTML = ''; $('#mapframe').classList.add('hide');
+    $('#locmsg').textContent = msg; $('#locmsg').classList.remove('hide'); st.start = null; words(); if (st.data) drawDays();
+  }
+  $('.cards2').addEventListener('click', function (e) {
+    var b = e.target.closest('.pick'); if (!b) return; st.type = b.dataset.t; st.start = null;
+    D.$$('.pick').forEach(function (x) { x.classList.toggle('on', x === b); });
+    $('#locf').classList.toggle('hide', st.type !== 'Face to face'); $('#locmsg').classList.add('hide');
+    if (st.type !== 'Face to face') { st.dest = ''; $('#mapframe').classList.add('hide'); }
+    words(); if (st.data) drawDays();
+  });
+
+  function findAddress() {
+    var v = $('#loc').value.trim(); $('#locmsg').classList.add('hide'); if (!v) { $('#locmsg').textContent = 'Please type where you would like to meet.'; $('#locmsg').classList.remove('hide'); return; }
+    var btn = $('#findbtn'); D.busy(btn, true, 'Searching…'); st.dest = ''; $('#matches').innerHTML = ''; $('#mapframe').classList.add('hide');
+    D.api('checkLocation', v).then(function (r) {
+      D.busy(btn, false);
+      if (r.tooFar) { toVideo(r.message); return; }
+      if (!r.ok) { $('#locmsg').textContent = r.message; $('#locmsg').classList.remove('hide'); return; }
+      st.matches = r.matches;
+      $('#matches').innerHTML = '<p class="small muted" style="margin:0 0 6px">Choose the right address:</p>' + r.matches.map(function (m, i) {
+        return '<button type="button" class="match" data-i="' + i + '"' + (m.tooFar ? ' disabled' : '') + '><strong>' + h(m.address) + '</strong><div class="small muted">' + (m.tooFar ? 'More than an hour\'s drive from Charlotte: please choose a video call for this one.' : 'About ' + (m.minutes === null ? '' : m.minutes + ' minutes by car from Charlotte')) + '<a href="' + h(m.mapsUrl) + '" target="_blank" rel="noopener">View on Google Maps</a></div></button>';
+      }).join('');
+      var ok = r.matches.filter(function (m) { return !m.tooFar; }); if (ok.length === 1) choose(r.matches.indexOf(ok[0]));
+    }).catch(function (x) { D.busy(btn, false); $('#locmsg').textContent = x.message; $('#locmsg').classList.remove('hide'); });
+  }
+  function choose(i) {
+    var m = st.matches[i]; if (!m || m.tooFar) return; st.dest = m.address; st.start = null;
+    D.$$('.match').forEach(function (x) { x.classList.toggle('on', Number(x.dataset.i) === i); });
+    var f = $('#mapframe'); f.src = 'https://maps.google.com/maps?q=' + encodeURIComponent(m.address) + '&output=embed'; f.classList.remove('hide');
+    load(m.address).catch(function (e) { $('#locmsg').textContent = e.message; $('#locmsg').classList.remove('hide'); });
+  }
+  $('#findbtn').addEventListener('click', findAddress);
+  $('#loc').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); findAddress(); } });
+  $('#loc').addEventListener('input', function () { if (st.dest) { st.dest = ''; st.f2f = null; $('#mapframe').classList.add('hide'); D.$$('.match').forEach(function (x) { x.classList.remove('on'); }); if (st.data) drawDays(); } });
+  $('#matches').addEventListener('click', function (e) { if (e.target.closest('a')) return; var b = e.target.closest('.match'); if (b) choose(Number(b.dataset.i)); });
+
+  function drawLens() { $('#lens').innerHTML = st.data.lengths.map(function (n) { return '<button type="button" class="chip' + (n === st.len ? ' on' : '') + '" data-n="' + n + '">' + n + ' minutes</button>'; }).join(''); }
+  $('#lens').addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (!b) return; st.len = Number(b.dataset.n); st.start = null; drawLens(); drawDays(); });
+  function drawDays() {
+    var f2fWait = st.type === 'Face to face' && !st.dest;
+    var ok = f2fWait ? [] : st.data.days.filter(function (d) { return timesFor(d).length; });
+    if (!ok.some(function (d) { return d.date === st.date; })) { st.date = ok.length ? ok[0].date : ''; st.start = null; }
+    $('#days').innerHTML = ok.map(function (d) { return '<button type="button" class="chip' + (d.date === st.date ? ' on' : '') + '" data-d="' + d.date + '">' + h(d.label) + '</button>'; }).join('');
+    $('#nodays').textContent = f2fWait ? 'Choose an address above first, then the times Charlotte can get there will appear.' : (ok.length ? '' : 'There are no free times for that in the next few weeks. Try a shorter meeting or a video call, or email Charlotte directly.');
+    drawTimes();
+  }
+  $('#days').addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (!b) return; st.date = b.dataset.d; st.start = null; drawDays(); });
+  function drawTimes() {
+    var day = st.data.days.filter(function (d) { return d.date === st.date; })[0], t = day ? timesFor(day) : [];
+    $('#times').innerHTML = t.map(function (m) { return '<button type="button" class="chip' + (m === st.start ? ' on' : '') + '" data-m="' + m + '">' + D.fmt(m) + '</button>'; }).join('');
+    $('#picked').innerHTML = st.start !== null && day ? 'You have picked <strong>' + h(day.label) + ' at ' + D.fmt(st.start) + '</strong> for ' + st.len + ' minutes.' : '';
+  }
+  $('#times').addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (!b) return; st.start = Number(b.dataset.m); drawTimes(); });
+
+  $('#form').addEventListener('submit', function (e) {
+    e.preventDefault(); var err = $('#err'); err.textContent = '';
+    if (st.type === 'Face to face' && !st.dest) { err.textContent = 'Please find and choose the address you would like to meet at, or choose a video call.'; $('#loc').focus(); return; }
+    if (!st.date || st.start === null) { err.textContent = 'Please pick a day and a time.'; return; }
+    var btn = $('#go'); D.busy(btn, true, st.type === 'Face to face' ? 'Sending…' : 'Booking…');
+    D.api('bookBni', { name: $('#name').value, email: $('#email').value, chapter: $('#chapter').value, company: $('#company').value, phone: $('#phone').value, notes: $('#notes').value,
+      type: st.type, location: st.type === 'Face to face' ? st.dest : '', date: st.date, start: D.fmt(st.start), length: st.len, website: $('#website').value }).then(function (r) {
+      $('#form').classList.add('hide'); $('#done').classList.remove('hide');
+      var when = D.label(st.date) + ' at ' + D.fmt(st.start) + ' (' + st.len + ' minutes)';
+      if (r.status === 'Confirmed') {
+        $('#donehead').textContent = 'Your 1-2-1 is booked';
+        $('#donemsg').textContent = when + ', by video call. ' + (r.invited ? 'A calendar invite with the video link is on its way to ' + $('#email').value + '.' : 'Charlotte will send you the video link.');
+        $('#donefoot').textContent = 'If you need to change it, just reply to the invite or email Charlotte.';
+      } else {
+        $('#donehead').textContent = 'Request sent';
+        $('#donemsg').textContent = 'You asked for ' + when + ', face to face at ' + st.dest + '.';
+        $('#donefoot').textContent = 'Nothing is confirmed yet. Charlotte will reply by email once she has approved it.';
+      }
+      window.scrollTo(0, 0);
+    }).catch(function (x) {
+      D.busy(btn, false); words();
+      if (/^TOO_FAR:/.test(x.message)) { toVideo(x.message.replace(/^TOO_FAR:/, '')); err.textContent = 'Please check the details and press the button again to book it as a video call.'; return; }
+      if (/^TRAVEL:/.test(x.message)) { err.textContent = x.message.replace(/^TRAVEL:/, ''); st.start = null; load(st.dest).catch(function () {}); return; }
+      err.textContent = x.message; load(st.type === 'Face to face' ? st.dest : '').catch(function () {});
+    });
+  });
+})();
+</script>
+</body></html>

@@ -96,7 +96,7 @@
   var D = window.Desk, $ = D.$, h = D.h, key = D.key(), S = null, btype = 'day';
   function fatal(m) { $('#loading').classList.add('hide'); $('#fatal').classList.remove('hide'); $('#fatalmsg').textContent = m; }
   function A() { return D.api.apply(null, [arguments[0], key].concat([].slice.call(arguments, 1))); }
-  function load() { return A('adminGet').then(function (s) { S = s; draw(); $('#loading').classList.add('hide'); $('#app').classList.remove('hide'); }).catch(function (e) { fatal(e.message); }); }
+  function load() { return A('adminGet').then(function (s) { if (!s || !s.now) throw new Error('The page did not receive your availability. Please refresh in a moment; if it keeps happening, tell Claude.'); S = s; draw(); $('#loading').classList.add('hide'); $('#app').classList.remove('hide'); }).catch(function (e) { fatal(e.message); }); }
   function range(a, b) { return D.fmt(a) + ' to ' + D.fmt(b); }
   var WD = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 

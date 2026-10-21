@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Choose where to meet Charlotte</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+<style>
+  .match { display: block; width: 100%; text-align: left; font: inherit; border: 2px solid var(--line); background: #fff; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; color: var(--ink); }
+  .match:hover { border-color: var(--navy); }
+  .match.on { border-color: var(--navy); background: #f1f3fa; box-shadow: 0 0 0 3px rgba(199,160,74,.35); }
+  .match .small a { margin-left: 6px; }
+</style>
+</head><body>
+<header class="hero"><div class="wrap">
+  <h1>Choose where to meet</h1>
+  <p id="intro">Type your postcode and we will suggest three cafes roughly halfway between you and Charlotte.</p>
+</div></header>
+
+<main class="wrap">
+  <div id="loading" class="card"><span class="muted">One moment…</span></div>
+  <div id="fatal" class="card hide"><p class="err" id="fatalmsg"></p></div>
+
+  <section id="main" class="card hide">
+    <p id="hello" style="margin-top:0"></p>
+    <div class="field" style="margin-bottom:8px"><label for="pc">Your postcode *</label>
+      <div style="display:flex;gap:8px"><input type="text" id="pc" placeholder="e.g. CF10 1AA" autocomplete="postal-code" maxlength="10"><button type="button" class="btn" id="go" style="white-space:nowrap">Find cafes</button></div></div>
+    <p class="tiny muted" style="margin:0 0 10px">We only use your postcode to work out the middle. It is not saved.</p>
+    <div class="notice hide" id="msg" role="status"></div>
+    <div id="places"></div>
+    <div class="err" id="err" role="alert"></div>
+  </section>
+
+  <div id="done" class="card hide">
+    <div class="ok"><h2 style="margin-top:0">Thank you</h2><p id="donemsg" style="margin:0"></p></div>
+    <p class="small muted" style="margin-top:14px">Nothing is confirmed yet. Charlotte will confirm the meeting and the place by email, and send you a calendar invite.</p>
+  </div>
+</main>
+<script src="config.js?v=3"></script><script src="app.js?v=3"></script>
+<script>
+(function () {
+  var D = window.Desk, $ = D.$, h = D.h;
+  var q = new URLSearchParams(location.search), ref = q.get('r') || '', tok = q.get('t') || '', places = [];
+  function fatal(m) { $('#loading').classList.add('hide'); $('#fatal').classList.remove('hide'); $('#fatalmsg').textContent = m; }
+  function say(m) { $('#msg').textContent = m; $('#msg').classList.toggle('hide', !m); }
+
+  if (!ref || !tok) { fatal('This link is not complete. Please use the link in Charlotte\'s email.'); return; }
+  D.api('getPlaceInfo', ref, tok).then(function (i) {
+    $('#loading').classList.add('hide'); $('#main').classList.remove('hide');
+    $('#hello').innerHTML = 'Hi ' + h(i.first) + ', this is for your 1-2-1 with Charlotte on <strong>' + h(i.when) + '</strong> (' + i.length + ' minutes, face to face).' +
+      (i.chosen ? '<br><span class="small muted">You have already chosen <strong>' + h(i.chosen) + '</strong>. You can search again to change it.</span>' : '');
+    if (i.confirmed) { $('#hello').innerHTML += '<br><span class="small muted">This meeting is already confirmed. If you need to change the place, please reply to Charlotte\'s email.</span>'; $('#go').disabled = true; }
+  }).catch(function (e) { fatal(e.message); });
+
+  function search() {
+    var v = $('#pc').value.trim(); $('#err').textContent = ''; say('');
+    if (!v) { $('#err').textContent = 'Please enter your postcode.'; return; }
+    var btn = $('#go'); D.busy(btn, true, 'Searching…'); $('#places').innerHTML = '';
+    D.api('findPlaces', ref, tok, v).then(function (r) {
+      D.busy(btn, false);
+      if (!r.ok) { say(r.message); return; }
+      places = r.places;
+      $('#places').innerHTML = '<p class="small muted" style="margin:0 0 6px">Choose the cafe you would like:</p>' + r.places.map(function (p, i) {
+        return '<button type="button" class="match" data-i="' + i + '"><strong>' + h(p.name) + '</strong><div class="small">' + h(p.address) + '</div><div class="small muted">' +
+          (p.minutes ? 'About ' + p.minutes + ' minutes by car from your postcode' : '') + '<a href="' + h(p.mapsUrl) + '" target="_blank" rel="noopener">View on Google Maps</a></div></button>';
+      }).join('');
+    }).catch(function (x) { D.busy(btn, false); $('#err').textContent = x.message; });
+  }
+  $('#go').addEventListener('click', search);
+  $('#pc').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); search(); } });
+  $('#places').addEventListener('click', function (e) {
+    if (e.target.closest('a')) return;
+    var b = e.target.closest('.match'); if (!b) return;
+    var i = Number(b.dataset.i), p = places[i]; if (!p) return;
+    D.$$('.match').forEach(function (x) { x.classList.toggle('on', x === b); });
+    D.busy(b, true, 'Saving…');
+    D.api('choosePlace', ref, tok, i).then(function (r) {
+      $('#main').classList.add('hide'); $('#done').classList.remove('hide');
+      $('#donemsg').innerHTML = 'You chose <strong>' + h(r.place) + '</strong>, ' + h(r.address) + ', for <strong>' + h(r.when) + '</strong>.';
+      window.scrollTo(0, 0);
+    }).catch(function (x) { D.busy(b, false); $('#err').textContent = x.message; });
+  });
+})();
+</script>
+</body></html>

@@ -129,7 +129,7 @@
       var pill = { Requested: 'amber', Confirmed: 'green', Declined: 'grey', Done: 'grey' }[r.status] || '';
       return '<div style="align-items:flex-start"><div><strong>' + h(r.name) + '</strong> <span class="pill ' + pill + '">' + h(r.status) + '</span><div class="small">' + h(r.label) + ' at ' + h(r.start) + ' for ' + h(r.length) + ' min, ' + h(r.type) + (r.location ? ': ' + h(r.location) : '') + '</div>' +
         '<div class="small muted">' + h(r.topic) + '</div><div class="small"><a href="mailto:' + h(r.email) + '">' + h(r.email) + '</a>' + (r.phone ? ' · ' + h(r.phone) : '') + '</div></div>' +
-        '<div class="chips" style="justify-content:flex-end">' + (r.status === 'Requested' ? '<button class="btn small" data-st="Confirmed" data-ref="' + h(r.ref) + '">Confirmed</button><button class="btn small ghost" data-st="Declined" data-ref="' + h(r.ref) + '">Decline</button>' :
+        '<div class="chips" style="justify-content:flex-end">' + (r.status === 'Requested' ? '<button class="btn small" data-st="Confirmed" data-ref="' + h(r.ref) + '">Confirm</button>' + (r.type === 'Face to face' ? '<button class="btn small ghost" data-pl="' + h(r.ref) + '">Copy place link</button>' : '') + '<button class="btn small ghost" data-st="Declined" data-ref="' + h(r.ref) + '">Decline</button>' :
           r.status === 'Confirmed' ? '<button class="btn small ghost" data-st="Done" data-ref="' + h(r.ref) + '">Done</button><button class="btn small ghost" data-st="Declined" data-ref="' + h(r.ref) + '">Cancel</button>' : '') + '</div></div>';
     }).join('') : '<p class="muted small" style="margin:0">No requests yet.</p>';
 
@@ -146,7 +146,12 @@
   }
 
   $('#blocks').addEventListener('click', function (e) { var b = e.target.closest('[data-rm]'); if (!b) return; b.disabled = true; A('adminRemoveBlock', b.dataset.rm).then(function () { D.toast('Removed'); return load(); }).catch(function (x) { b.disabled = false; D.toast(x.message, 'err'); }); });
-  $('#reqs').addEventListener('click', function (e) { var b = e.target.closest('[data-st]'); if (!b) return; b.disabled = true; A('adminSetRequestStatus', b.dataset.ref, b.dataset.st).then(function () { D.toast('Updated'); return load(); }).catch(function (x) { b.disabled = false; D.toast(x.message, 'err'); }); });
+  $('#reqs').addEventListener('click', function (e) {
+    var p = e.target.closest('[data-pl]');
+    if (p) { p.disabled = true; A('adminPlaceLink', p.dataset.pl).then(function (r) { p.disabled = false; var done = function () { D.toast('Place link copied'); }; try { navigator.clipboard.writeText(r.url).then(done, function () { window.prompt('Copy this link', r.url); }); } catch (x) { window.prompt('Copy this link', r.url); } }).catch(function (x) { p.disabled = false; D.toast(x.message, 'err'); }); return; }
+    var b = e.target.closest('[data-st]'); if (!b) return; b.disabled = true;
+    A('adminSetRequestStatus', b.dataset.ref, b.dataset.st).then(function (r) { D.toast(r && r.eventProblem ? 'Confirmed, but the calendar invite failed: ' + r.eventProblem : (b.dataset.st === 'Confirmed' ? 'Confirmed. The calendar invite and GAINS email have been sent.' : 'Updated')); return load(); }).catch(function (x) { b.disabled = false; D.toast(x.message, 'err'); });
+  });
 
   $('#btype').addEventListener('click', function (e) {
     var b = e.target.closest('.chip'); if (!b) return; btype = b.dataset.t; D.$$('#btype .chip').forEach(function (x) { x.classList.toggle('on', x === b); });

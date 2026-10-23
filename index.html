@@ -104,7 +104,8 @@
 <script src="config.js?v=3"></script><script src="app.js?v=3"></script>
 <script>
 (function () {
-  var D = window.Desk, $ = D.$, h = D.h, key = D.key(), tkey = key ? '' : D.taskKey(), limited = !key && !!tkey;
+  var D = window.Desk, $ = D.$, h = D.h, hadTk = /[#&]tk=/.test(location.hash), key = D.key(), tkey = key ? '' : D.taskKey(), limited = !key && !!tkey && (hadTk || /[?&]only=tasks/.test(location.search)); /* a remembered task key alone never turns the public meeting page into the tasks-only page */
+  if (hadTk && !key) { try { history.replaceState(null, '', location.pathname + '?only=tasks'); } catch (e) { /* ignore */ } } // so a bookmark of the tasks-only page keeps working
   var st = { type: 'Virtual (video call)', len: 0, date: '', start: null, data: null, dest: '', f2f: null, matches: [] };
 
   // ---------------- tabs ----------------

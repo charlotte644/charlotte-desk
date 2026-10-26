@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rearrange your 1-2-1</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head><body>
+<header class="hero"><div class="wrap">
+  <h1>Rearrange your 1-2-1</h1>
+  <p>No problem at all. Pick another time below and your calendar invite will update itself.</p>
+</div></header>
+
+<main class="wrap">
+  <div id="loading" class="card"><span class="muted">Loading Charlotte's availability…</span></div>
+  <div id="fatal" class="card hide"><p class="err" id="fatalmsg"></p></div>
+
+  <section id="main" class="card hide">
+    <p id="hello" style="margin-top:0"></p>
+    <div class="step"><b>1</b><h3>Pick a new day</h3></div>
+    <p class="small muted" style="margin-top:0">Only times when Charlotte is free are shown (UK time).</p>
+    <div class="chips" id="days" style="margin-bottom:12px"></div>
+    <div class="step"><b>2</b><h3>Pick a time</h3></div>
+    <div class="chips" id="times"></div>
+    <p class="small muted" id="nodays"></p>
+    <p id="picked" class="small"></p>
+    <div class="err" id="err" role="alert"></div>
+    <button type="button" class="btn gold block" id="go">Move my 1-2-1 to this time</button>
+    <p class="tiny muted" style="margin-top:10px">Can't find a time that works? Just reply to Charlotte's email and she will sort it out with you.</p>
+  </section>
+
+  <div id="done" class="card hide">
+    <div class="ok"><h2 style="margin-top:0">All sorted</h2><p id="donemsg" style="margin:0"></p></div>
+    <p class="small muted" style="margin-top:14px" id="donefoot"></p>
+  </div>
+</main>
+<script src="config.js?v=3"></script><script src="app.js?v=3"></script>
+<script>
+(function () {
+  var D = window.Desk, $ = D.$, h = D.h;
+  var q = new URLSearchParams(location.search), ref = q.get('r') || '', tok = q.get('t') || '';
+  var st = { info: null, date: '', start: null };
+  function fatal(m) { $('#loading').classList.add('hide'); $('#fatal').classList.remove('hide'); $('#fatalmsg').textContent = m; }
+
+  // the current booking's own time is not offered back, and face-to-face times Charlotte could not travel to are left out
+  function timesFor(d) {
+    var i = st.info;
+    return D.fit(d.free, i.length, i.step).filter(function (m) {
+      if (d.date === i.date && D.fmt(m) === i.start) return false;
+      return !(i.f2f && (i.f2f[d.date] || []).some(function (b) { return m >= b[0] && m < b[1]; }));
+    });
+  }
+  function drawDays() {
+    var ok = st.info.days.filter(function (d) { return timesFor(d).length; });
+    if (!ok.some(function (d) { return d.date === st.date; })) { st.date = ok.length ? ok[0].date : ''; st.start = null; }
+    $('#days').innerHTML = ok.map(function (d) { return '<button type="button" class="chip' + (d.date === st.date ? ' on' : '') + '" data-d="' + d.date + '">' + h(d.label) + '</button>'; }).join('');
+    $('#nodays').textContent = ok.length ? '' : 'There are no other free times in the next few weeks. Please reply to Charlotte\'s email and she will find a time with you.';
+    $('#go').classList.toggle('hide', !ok.length);
+    drawTimes();
+  }
+  function drawTimes() {
+    var day = st.info.days.filter(function (d) { return d.date === st.date; })[0], t = day ? timesFor(day) : [];
+    $('#times').innerHTML = t.map(function (m) { return '<button type="button" class="chip' + (m === st.start ? ' on' : '') + '" data-m="' + m + '">' + D.fmt(m) + '</button>'; }).join('');
+    $('#picked').innerHTML = st.start !== null && day ? 'New time: <strong>' + h(day.label) + ' at ' + D.fmt(st.start) + '</strong> (' + st.info.length + ' minutes).' : '';
+  }
+  $('#days').addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (!b) return; st.date = b.dataset.d; st.start = null; drawDays(); });
+  $('#times').addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (!b) return; st.start = Number(b.dataset.m); drawTimes(); });
+
+  function load() {
+    return D.api('getMoveInfo', ref, tok).then(function (i) {
+      st.info = i;
+      $('#loading').classList.add('hide'); $('#main').classList.remove('hide');
+      $('#hello').innerHTML = 'Hi ' + h(i.first) + ', your 1-2-1 with Charlotte is currently booked for <strong>' + h(i.when) + '</strong> (' + i.length + ' minutes, ' + (i.type === 'Face to face' ? 'face to face' + (i.location ? ' at ' + h(i.location) : '') : 'video call') + ').';
+      drawDays();
+    });
+  }
+
+  $('#go').addEventListener('click', function () {
+    $('#err').textContent = '';
+    if (!st.date || st.start === null) { $('#err').textContent = 'Please pick a day and a time.'; return; }
+    var btn = $('#go'); D.busy(btn, true, 'Moving…');
+    D.api('moveBni', ref, tok, st.date, D.fmt(st.start)).then(function (r) {
+      $('#main').classList.add('hide'); $('#done').classList.remove('hide');
+      $('#donemsg').innerHTML = 'Your 1-2-1 is now <strong>' + h(r.when) + '</strong>.';
+      $('#donefoot').textContent = r.calendar ? 'Your calendar invite has been updated, and Charlotte has been told. Thank you!' : 'Charlotte has been told and will send you an updated invite. Thank you!';
+      window.scrollTo(0, 0);
+    }).catch(function (x) { D.busy(btn, false); $('#err').textContent = x.message; load().catch(function () {}); });
+  });
+
+  if (!ref || !tok) { fatal('This link is not complete. Please use the button in Charlotte\'s email.'); return; }
+  load().catch(function (e) { fatal(e.message); });
+})();
+</script>
+</body></html>

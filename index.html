@@ -87,7 +87,7 @@
   <div id="tapp" class="hide">
    <form id="tform" class="card" novalidate>
     <div class="field"><label for="t">What needs doing? *</label><textarea id="t" placeholder="e.g. Ring the venue about dietary needs"></textarea></div>
-    <div class="field"><label>Which list?</label>
+    <div class="field"><label id="tlistlbl">Which list?</label>
       <div class="chips" id="tlist"><button type="button" class="chip on" data-v="Work (Hammer and Pen)">Hammer and Pen</button><button type="button" class="chip" data-v="Work (Heres Law)">Heres Law</button><button type="button" class="chip" data-v="Personal">Personal</button></div></div>
     <div class="field"><label>When?</label>
       <div class="chips" id="twhen"><button type="button" class="chip on" data-d="today">Today</button><button type="button" class="chip" data-d="tomorrow">Tomorrow</button><button type="button" class="chip" data-d="friday">This Friday</button><button type="button" class="chip" data-d="monday">Next Monday</button><button type="button" class="chip" data-d="none">No date</button></div>
@@ -97,20 +97,23 @@
     <div class="err" id="terr" role="alert"></div>
     <button type="submit" class="btn gold block" id="tgo">Add to my Morning Desk</button>
    </form>
-   <section class="card"><h2>Added recently</h2><div class="list" id="trecent"><span class="muted small">Loading…</span></div></section>
+   <section class="card"><h2 id="trecenth">Added recently</h2><div class="list" id="trecent"><span class="muted small">Loading…</span></div></section>
   </div>
  </div>
 </main>
 <script src="config.js?v=3"></script><script src="app.js?v=3"></script>
 <script>
 (function () {
-  var D = window.Desk, $ = D.$, h = D.h, hadTk = /[#&]tk=/.test(location.hash), key = D.key(), tkey = key ? '' : D.taskKey(), limited = !key && !!tkey && (hadTk || /[?&]only=tasks/.test(location.search)); /* a remembered task key alone never turns the public meeting page into the tasks-only page */
+  var D = window.Desk, $ = D.$, h = D.h, hadTk = /[#&]tk=/.test(location.hash), key = D.key(), tkey = key ? '' : D.taskKey(), limited = !key && !!tkey && (hadTk || /[?&](only=tasks|tab=task)/.test(location.search)); /* a remembered task key alone never turns the public meeting page into the tasks-only page */
   if (hadTk && !key) { try { history.replaceState(null, '', location.pathname + '?only=tasks'); } catch (e) { /* ignore */ } } // so a bookmark of the tasks-only page keeps working
   var st = { type: 'Virtual (video call)', len: 0, date: '', start: null, data: null, dest: '', f2f: null, matches: [] };
 
   // ---------------- tabs ----------------
   if (!key) { $('.tabs').classList.add('hide'); }
-  if (limited) { $('#panel-meet').classList.add('hide'); $('#panel-task').classList.remove('hide'); $('#ttl').textContent = 'Add a task for Charlotte'; $('#intro').textContent = 'It goes straight onto her Morning Desk.'; $('#next').textContent = ''; document.title = 'Add a task for Charlotte'; $('#tapp').classList.remove('hide'); $('#trecent').closest('section').classList.add('hide'); }
+  if (limited) { $('#panel-meet').classList.add('hide'); $('#panel-task').classList.remove('hide'); $('#ttl').textContent = 'Add a task for Charlotte'; $('#intro').textContent = "It goes straight onto Charlotte's to do list."; $('#next').textContent = ''; document.title = 'Add a task for Charlotte'; $('#tapp').classList.remove('hide');
+    // Personal or Other only (everything lands on her Personal list), a different button, and a list of everything added with when it was done and her notes
+    $('#tlistlbl').textContent = 'Is it personal, or something else?'; $('#tlist').innerHTML = '<button type="button" class="chip on" data-v="Personal">Personal</button><button type="button" class="chip" data-v="Other">Other</button>';
+    $('#tgo').textContent = "Add to Charlotte's to do list"; $('#trecenth').textContent = 'All to do list added'; }
   function showTab(which) {
     $('#panel-meet').classList.toggle('hide', which !== 'meet'); $('#panel-task').classList.toggle('hide', which !== 'task');
     $('#tab-meet').setAttribute('aria-selected', which === 'meet'); $('#tab-task').setAttribute('aria-selected', which === 'task');
@@ -210,7 +213,7 @@
   });
 
   // ---------------- add a task (needs Charlotte's private key) ----------------
-  var tst = { list: 'Work (Hammer and Pen)', urg: 'Normal', when: 'today' }, tOpened = false;
+  var tst = { list: limited ? 'Personal' : 'Work (Hammer and Pen)', urg: 'Normal', when: 'today' }, tOpened = false;
   function A() { return D.api.apply(null, [arguments[0], key || tkey].concat([].slice.call(arguments, 1))); }
   function pick(sel, set) { $(sel).addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (!b) return; D.$$(sel + ' .chip').forEach(function (x) { x.classList.toggle('on', x === b); }); set(b); }); }
   pick('#tlist', function (b) { tst.list = b.dataset.v; }); pick('#turg', function (b) { tst.urg = b.dataset.v; });
@@ -222,7 +225,18 @@
     if (tst.when === 'friday') return D.addDays(t, (5 - wd + 7) % 7); if (tst.when === 'monday') return D.addDays(t, 8 - wd);
     if (tst.when === 'date') return $('#tdue').value; return '';
   }
+  function recentLimited() {
+    A('taskList').then(function (rows) {
+      $('#trecent').innerHTML = rows.length ? rows.map(function (t) {
+        var st = t.status === 'Done' ? '<span class="pill green">Done' + (t.done ? ' ' + h(D.label(t.done)) : '') + '</span>' : t.status === 'On the list' ? '<span class="pill amber">On Charlotte\'s list</span>' : '<span class="pill grey">Sent</span>';
+        return '<div style="display:block"><div style="display:flex;gap:10px;justify-content:space-between;align-items:flex-start"><strong>' + h(t.title) + '</strong><span style="white-space:nowrap">' + st + '</span></div>'
+          + '<div class="small muted">' + h(t.kind || 'Personal') + (t.due ? ' · due ' + h(D.label(t.due)) : '') + ' · ' + h(t.urgency) + (t.added ? ' · added ' + h(D.label(t.added)) : '') + '</div>'
+          + (t.note ? '<div class="small" style="margin-top:4px">Charlotte\'s note: ' + h(t.note) + '</div>' : '') + '</div>';
+      }).join('') : '<span class="muted small">Nothing yet.</span>';
+    }).catch(function (e) { $('#trecent').innerHTML = '<span class="err">' + h(e.message) + '</span>'; });
+  }
   function recent() {
+    if (limited) return recentLimited();
     A('adminGet').then(function (s) {
       $('#trecent').innerHTML = s.tasks.length ? s.tasks.map(function (t) { return '<div><div><strong>' + h(t.title) + '</strong><div class="small muted">' + h(t.list) + (t.due ? ' · due ' + h(D.label(t.due)) : '') + ' · ' + h(t.urgency) + '</div></div></div>'; }).join('') : '<span class="muted small">Nothing yet.</span>';
     }).catch(function (e) { $('#trecent').innerHTML = '<span class="err">' + h(e.message) + '</span>'; });
@@ -230,9 +244,10 @@
   function openTasks() {
     $('#tapp').classList.remove('hide'); if (!tOpened) { tOpened = true; recent(); }
   }
+  if (limited) openTasks();
   $('#tform').addEventListener('submit', function (e) {
     e.preventDefault(); var btn = $('#tgo'), err = $('#terr'); err.textContent = ''; D.busy(btn, true, 'Adding…');
-    A('adminAddTask', { title: $('#t').value, list: tst.list, due: dueDate(), urgency: tst.urg }).then(function () { D.busy(btn, false); $('#t').value = ''; D.toast('Added to your Morning Desk'); $('#t').focus(); recent(); })
+    A('adminAddTask', { title: $('#t').value, list: limited ? 'Personal' : tst.list, kind: limited ? tst.list : '', due: dueDate(), urgency: tst.urg }).then(function () { D.busy(btn, false); $('#t').value = ''; D.toast(limited ? "Added to Charlotte's to do list" : 'Added to your Morning Desk'); $('#t').focus(); recent(); })
       .catch(function (x) { D.busy(btn, false); err.textContent = x.message; });
   });
   if (key && /[?&]tab=task/.test(location.search)) showTab('task');
